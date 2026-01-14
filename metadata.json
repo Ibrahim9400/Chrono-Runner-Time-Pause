@@ -1,0 +1,5 @@
+{
+  "name": "Chrono Runner: Time Pause",
+  "description": "A 2D endless runner where you control the flow of time. Freeze the world to dodge moving obstacles while keeping your momentum.",
+  "requestFramePermissions": []
+}

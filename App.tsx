@@ -5,6 +5,12 @@ import UIOverlay from './components/UIOverlay';
 import { GameState, MAX_ENERGY, GameMode, SKINS, BoosterType, BOOSTER_PRICES, MISSIONS } from './constants';
 import { Inventory } from './types';
 
+declare global {
+  interface Window {
+    CrazyGames: any;
+  }
+}
+
 const App: React.FC = () => {
   const gameRef = useRef<GameCanvasHandle>(null);
   const [gameState, setGameState] = useState<GameState>(GameState.MENU);
@@ -15,33 +21,115 @@ const App: React.FC = () => {
   const [isTimeFrozen, setIsTimeFrozen] = useState(false);
   const [jumpTrigger, setJumpTrigger] = useState(0);
   const [activeBoosterEffect, setActiveBoosterEffect] = useState<BoosterType | null>(null);
+  const [isSdkReady, setIsSdkReady] = useState(false);
+  const sdkInitializing = useRef(false);
 
-  // Persistent State
-  const [highScore, setHighScore] = useState(() => Number(localStorage.getItem('chrono_high_score')) || 0);
-  const [coins, setCoins] = useState(() => Number(localStorage.getItem('chrono_coins')) || 0);
+  // CrazyGames SDK initialization with extreme safety
+  useEffect(() => {
+    let mounted = true;
+
+    const initializeSDK = async () => {
+      if (sdkInitializing.current) return;
+      
+      // Small delay to ensure the script is ready
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      if (mounted && window.CrazyGames?.SDK) {
+        sdkInitializing.current = true;
+        try {
+          // Wrap init in an extra layer of try-catch and timeout
+          const initPromise = window.CrazyGames.SDK.init();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('SDK Init Timeout')), 3000)
+          );
+          
+          await Promise.race([initPromise, timeoutPromise]);
+          
+          if (mounted) {
+            console.log("CrazyGames SDK Initialized Successfully");
+            setIsSdkReady(true);
+          }
+        } catch (error) {
+          // Catch the [object Object] or other errors here
+          console.warn("CrazyGames SDK initialization failed (caught):", error);
+          if (mounted) setIsSdkReady(false);
+        }
+      }
+    };
+    
+    initializeSDK();
+    
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Tracking gameplay for CrazyGames - strictly guarded
+  useEffect(() => {
+    if (isSdkReady && window.CrazyGames?.SDK?.game) {
+      try {
+        if (gameState === GameState.PLAYING) {
+          window.CrazyGames.SDK.game.gameplayStart();
+        } else {
+          window.CrazyGames.SDK.game.gameplayStop();
+        }
+      } catch (e) {
+        // Silently swallow errors from SDK tracking
+      }
+    }
+  }, [gameState, isSdkReady]);
+
+  // Persistent State with comprehensive try-catch wrappers to avoid "Uncaught [object Object]" on startup
+  const safeGetItem = (key: string, defaultValue: string) => {
+    try {
+      return localStorage.getItem(key) || defaultValue;
+    } catch (e) {
+      return defaultValue;
+    }
+  };
+
+  const [highScore, setHighScore] = useState(() => Number(safeGetItem('chrono_high_score', '0')));
+  const [coins, setCoins] = useState(() => Number(safeGetItem('chrono_coins', '0')));
+  
   const [inventory, setInventory] = useState<Inventory>(() => {
-    const saved = localStorage.getItem('chrono_inventory');
-    return saved ? JSON.parse(saved) : { shield: 0, magnet: 0, energy: 0 };
+    try {
+      const saved = localStorage.getItem('chrono_inventory');
+      return saved ? JSON.parse(saved) : { shield: 0, magnet: 0, energy: 0 };
+    } catch (e) {
+      return { shield: 0, magnet: 0, energy: 0 };
+    }
   });
+
   const [unlockedSkins, setUnlockedSkins] = useState<string[]>(() => {
-    const saved = localStorage.getItem('chrono_unlocked_skins');
-    return saved ? JSON.parse(saved) : ['default'];
+    try {
+      const saved = localStorage.getItem('chrono_unlocked_skins');
+      return saved ? JSON.parse(saved) : ['default'];
+    } catch (e) {
+      return ['default'];
+    }
   });
+
   const [unlockedLevels, setUnlockedLevels] = useState<number[]>(() => {
-    const saved = localStorage.getItem('chrono_unlocked_levels');
-    return saved ? JSON.parse(saved) : [1];
+    try {
+      const saved = localStorage.getItem('chrono_unlocked_levels');
+      return saved ? JSON.parse(saved) : [1];
+    } catch (e) {
+      return [1];
+    }
   });
-  const [selectedSkin, setSelectedSkin] = useState(() => localStorage.getItem('chrono_selected_skin') || 'default');
+
+  const [selectedSkin, setSelectedSkin] = useState(() => safeGetItem('chrono_selected_skin', 'default'));
   const [customLevel, setCustomLevel] = useState<any[]>([]);
 
-  useEffect(() => localStorage.setItem('chrono_high_score', highScore.toString()), [highScore]);
-  useEffect(() => localStorage.setItem('chrono_coins', coins.toString()), [coins]);
-  useEffect(() => localStorage.setItem('chrono_inventory', JSON.stringify(inventory)), [inventory]);
-  useEffect(() => localStorage.setItem('chrono_unlocked_skins', JSON.stringify(unlockedSkins)), [unlockedSkins]);
-  useEffect(() => localStorage.setItem('chrono_selected_skin', selectedSkin), [selectedSkin]);
-  useEffect(() => localStorage.setItem('chrono_unlocked_levels', JSON.stringify(unlockedLevels)), [unlockedLevels]);
+  // Safe persist effects
+  useEffect(() => { try { localStorage.setItem('chrono_high_score', highScore.toString()); } catch (e) {} }, [highScore]);
+  useEffect(() => { try { localStorage.setItem('chrono_coins', coins.toString()); } catch (e) {} }, [coins]);
+  useEffect(() => { try { localStorage.setItem('chrono_inventory', JSON.stringify(inventory)); } catch (e) {} }, [inventory]);
+  useEffect(() => { try { localStorage.setItem('chrono_unlocked_skins', JSON.stringify(unlockedSkins)); } catch (e) {} }, [unlockedSkins]);
+  useEffect(() => { try { localStorage.setItem('chrono_selected_skin', selectedSkin); } catch (e) {} }, [selectedSkin]);
+  useEffect(() => { try { localStorage.setItem('chrono_unlocked_levels', JSON.stringify(unlockedLevels)); } catch (e) {} }, [unlockedLevels]);
 
-  const selectedSkinColor = useMemo(() => SKINS.find(s => s.id === selectedSkin)?.color || '#3b82f6', [selectedSkin]);
+  const selectedSkinColor = useMemo(() => SKINS.find(s => s.id === selectedSkin)?.color || '#0ea5e9', [selectedSkin]);
 
   const handleJump = useCallback(() => {
     if (gameState === GameState.PLAYING) setJumpTrigger(prev => prev + 1);
@@ -56,13 +144,11 @@ const App: React.FC = () => {
     else if (gameState === GameState.PAUSED) setGameState(GameState.PLAYING);
   }, [gameState]);
 
-  // Mission Completion Logic
   useEffect(() => {
     if (gameMode === GameMode.LEVELS && gameState === GameState.PLAYING) {
       const currentMission = MISSIONS.find(m => m.id === levelIndex);
       if (currentMission && score >= currentMission.target) {
         setGameState(GameState.LEVEL_COMPLETED);
-        // Unlock next level
         if (levelIndex < MISSIONS.length && !unlockedLevels.includes(levelIndex + 1)) {
           setUnlockedLevels(prev => [...prev, levelIndex + 1]);
         }
@@ -101,10 +187,11 @@ const App: React.FC = () => {
     }
   };
 
-  const onBuyCoins = (amount: number) => {
-    alert(`Simulating purchase of ${amount} coins...`);
-    setCoins(prev => prev + amount);
-  };
+  const onAdFinished = useCallback(() => {
+    gameRef.current?.revive();
+    setGameState(GameState.PLAYING);
+    setIsTimeFrozen(false);
+  }, []);
 
   return (
     <div className="w-screen h-screen bg-[#020617] flex items-center justify-center select-none overflow-hidden font-sans">
@@ -128,8 +215,8 @@ const App: React.FC = () => {
           onRestart={() => { setGameState(GameState.MENU); setTimeout(() => { setGameState(GameState.PLAYING); setIsTimeFrozen(false); }, 50); }}
           isTimeFrozen={isTimeFrozen} onToggleFreeze={handleToggleFreeze} onJump={handleJump}
           onBuySkin={onBuySkin} onSelectSkin={setSelectedSkin} onBuyBooster={onBuyBooster}
-          onUseBooster={onUseBooster} onBuyCoins={onBuyCoins}
-          onAdFinished={() => gameRef.current?.revive()}
+          onUseBooster={onUseBooster} onBuyCoins={(amt) => setCoins(c => c + amt)}
+          onAdFinished={onAdFinished}
           onSaveCustomLevel={setCustomLevel}
         />
       </div>

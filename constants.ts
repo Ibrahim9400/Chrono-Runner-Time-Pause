@@ -1,3 +1,4 @@
+
 export const CANVAS_WIDTH = 800;
 export const CANVAS_HEIGHT = 450;
 export const GRAVITY = 0.6;
@@ -17,8 +18,8 @@ export enum GameState {
   SHOP,
   LEVEL_SELECTOR,
   EDITOR,
-  AD_WATCHING,
-  LEVEL_COMPLETED
+  LEVEL_COMPLETED,
+  AD_WATCHING
 }
 
 export enum GameMode {

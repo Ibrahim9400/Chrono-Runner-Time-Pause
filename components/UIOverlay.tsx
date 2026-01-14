@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { GameState, MAX_ENERGY, SKINS, GameMode, ObstacleType, BoosterType, BOOSTER_PRICES, MISSIONS } from '../constants';
 import { 
@@ -47,24 +48,24 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   onToggleFreeze, onJump, onBuySkin, onSelectSkin, onBuyBooster, onUseBooster, onBuyCoins, onAdFinished, onSaveCustomLevel
 }) => {
   const [shopTab, setShopTab] = useState<'skins' | 'boosters'>('skins');
-  const [adTimer, setAdTimer] = useState(30);
+  const [adCountdown, setAdCountdown] = useState(3);
 
   useEffect(() => {
-    let interval: any;
+    let timer: any;
     if (gameState === GameState.AD_WATCHING) {
-      setAdTimer(30);
-      interval = setInterval(() => {
-        setAdTimer(prev => {
+      setAdCountdown(3);
+      timer = setInterval(() => {
+        setAdCountdown(prev => {
           if (prev <= 1) {
-            clearInterval(interval);
+            clearInterval(timer);
             onAdFinished();
             return 0;
           }
           return prev - 1;
         });
-      }, 1000); 
+      }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => clearInterval(timer);
   }, [gameState, onAdFinished]);
 
   if (gameState === GameState.PLAYING) {
@@ -130,6 +131,18 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
               <span className="text-[8px] font-black text-white mt-0.5">{b.count}</span>
             </button>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (gameState === GameState.AD_WATCHING) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-black/95 z-[500] backdrop-blur-xl">
+        <div className="text-center">
+          <div className="w-24 h-24 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto mb-8" />
+          <h2 className="text-3xl font-black italic tracking-tighter text-white mb-2 uppercase">Syncing Chrono-Link...</h2>
+          <p className="text-sky-400 font-bold tracking-widest text-sm uppercase">Reviving in {adCountdown}s</p>
         </div>
       </div>
     );
@@ -352,55 +365,18 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
            </div>
         </div>
         
-        <div className="flex flex-col gap-3 w-full max-xs px-6">
-          <button onClick={() => setGameState(GameState.AD_WATCHING)} className="p-5 bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
-            <Timer className="w-5 h-5" /> EMERGENCY RESTORE
+        <div className="flex flex-col gap-3 w-full max-w-xs px-6">
+          <button 
+            onClick={() => setGameState(GameState.AD_WATCHING)} 
+            className="p-5 bg-gradient-to-r from-sky-500 to-sky-600 rounded-2xl font-black flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(14,165,233,0.3)] hover:scale-105 active:scale-95 transition-all group"
+          >
+            <Zap className="w-5 h-5 text-amber-400 group-hover:animate-bounce" /> 
+            RESURRECT (WATCH AD)
           </button>
-          <button onClick={onRestart} className="p-5 bg-white text-black rounded-2xl font-black flex items-center justify-center gap-3 active:scale-95 transition-all">
+          <button onClick={onRestart} className="p-5 bg-white text-black rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-gray-100 active:scale-95 transition-all">
             <RefreshCw className="w-5 h-5" /> REBOOT SYSTEM
           </button>
           <button onClick={() => setGameState(GameState.MENU)} className="text-white/30 font-black hover:text-white transition-colors text-[10px] uppercase tracking-[0.4em] mt-4 text-center active:scale-95">Main Menu</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (gameState === GameState.AD_WATCHING) {
-    return (
-      <div className="absolute inset-0 bg-black flex flex-col items-center justify-center p-8 z-[500]">
-        <div className="w-full max-w-2xl aspect-video bg-[#080808] rounded-[2.5rem] border border-white/10 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl">
-           <div className="absolute inset-0 flex flex-col p-6 bg-gradient-to-br from-slate-900 to-black">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                    <Info className="w-4 h-4 text-black" />
-                  </div>
-                  <div className="text-white font-black text-[10px] tracking-tight">Google AdServices</div>
-                </div>
-                <div className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg flex items-center gap-2">
-                  <span className="text-white font-black text-lg font-mono">{adTimer}</span>
-                  <Timer className="w-3 h-3 text-sky-400" />
-                </div>
-              </div>
-              <div className="flex-1 w-full bg-white/5 rounded-2xl border border-dashed border-white/20 flex flex-col items-center justify-center text-center p-6">
-                 <ins className="adsbygoogle"
-                      style={{display: 'block', width: '100%', height: '100%'}}
-                      data-ad-client="ca-pub-XXXXXXXXXXXX"
-                      data-ad-slot="XXXXXXXX"
-                      data-ad-format="auto"
-                      data-full-width-responsive="true"></ins>
-                 <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                    <LayoutGrid className="w-10 h-10 text-sky-500 mb-4 animate-pulse" />
-                    <h3 className="text-2xl font-black text-white italic tracking-tighter">ADSBYGOOGLE LOADING</h3>
-                 </div>
-              </div>
-              <div className="mt-4 flex justify-end">
-                 <button className="px-8 py-3 bg-sky-500 rounded-lg font-black text-white shadow-xl text-[9px] uppercase tracking-widest">
-                   Learn More <ExternalLink className="w-2.5 h-2.5 ml-1" />
-                 </button>
-              </div>
-           </div>
-           <div className="absolute bottom-0 left-0 h-1 bg-sky-500 transition-all duration-1000" style={{ width: `${(1 - adTimer/30) * 100}%` }} />
         </div>
       </div>
     );

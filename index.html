@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -5,15 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Chrono Runner</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- CrazyGames SDK -->
+    <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
     <style>
       body {
         margin: 0;
         overflow: hidden;
-        background-color: #0f172a;
-        touch-action: none; /* Prevent browser zooming/scrolling */
+        background-color: #020617;
+        touch-action: none;
       }
       canvas {
         display: block;
+      }
+      /* Custom scrollbar for shop */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(14, 165, 233, 0.5);
+        border-radius: 10px;
       }
     </style>
   <script type="importmap">
